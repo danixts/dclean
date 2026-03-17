@@ -1,0 +1,14 @@
+dclean
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store

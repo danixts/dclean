@@ -27,6 +27,11 @@ var ProjectCategories = []Category{
 		Targets: []string{"dist", "build", ".output", ".nuxt", ".svelte-kit", ".angular"},
 	},
 	{
+		Name:    "Rust Build",
+		Color:   "#dea584",
+		Targets: []string{"target"},
+	},
+	{
 		Name:    "Dev Cache",
 		Color:   "#888888",
 		Targets: []string{".parcel-cache", ".vite", ".eslintcache", ".temp"},
@@ -57,7 +62,12 @@ var HomeCacheCategories = []Category{
 	{
 		Name:    "Package Manager Cache",
 		Color:   "#cb3837",
-		Targets: []string{"pip", "pnpm", "yarn", "uv", "npm", "turbo"},
+		Targets: []string{"pip", "pnpm", "yarn", "uv", "npm", "turbo", "pre-commit", "virtualenv"},
+	},
+	{
+		Name:    "Build Tool Cache",
+		Color:   "#dea584",
+		Targets: []string{"puccinialin", "node-gyp", "node"},
 	},
 	{
 		Name:    "Browser Cache",
@@ -76,10 +86,26 @@ var HomeCacheCategories = []Category{
 	},
 }
 
+var HomeDirCaches = []struct {
+	Root     string
+	Category Category
+}{
+	{"go/pkg", Category{Name: "Go Module Cache", Color: "#00add8", Targets: []string{"mod"}}},
+	{".m2", Category{Name: "Maven Repository", Color: "#c71a36", Targets: []string{"repository"}}},
+	{".npm", Category{Name: "npm Cache", Color: "#cb3837", Targets: []string{"_cacache"}}},
+	{".bun/install", Category{Name: "Bun Cache", Color: "#fbf0df", Targets: []string{"cache"}}},
+	{".cargo/registry", Category{Name: "Cargo Registry", Color: "#dea584", Targets: []string{"cache", "src"}}},
+}
+
 const (
 	SnapOldRevisionsCategory = "Snap Old Revisions"
 	SnapOldRevisionsColor    = "#ff6600"
 	SnapCacheCategory        = "Snap Cache"
 	SnapCacheColor           = "#ff9933"
 	SnapCacheMinSize         = 1024 * 1024
+
+	DockerOrphanVolumeCategory = "Docker Orphan Volume"
+	DockerOrphanVolumeColor    = "#2496ed"
+	DockerSystemPruneCategory  = "Docker System Prune"
+	DockerSystemPruneColor     = "#0db7ed"
 )

@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 
@@ -348,7 +349,13 @@ func (m Model) handleConfirmKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
 					continue
 				}
 				for _, item := range group.Items {
-					if err := os.RemoveAll(item.Path); err != nil {
+					var err error
+					if len(item.Cmd) > 0 {
+						err = exec.Command(item.Cmd[0], item.Cmd[1:]...).Run()
+					} else {
+						err = os.RemoveAll(item.Path)
+					}
+					if err != nil {
 						errors = append(errors, fmt.Sprintf("%s: %v", item.Path, err))
 					} else {
 						freed += item.Size
@@ -435,7 +442,12 @@ func buildColorMap() map[string]string {
 	for _, cat := range allCategories {
 		colorMap[cat.Name] = cat.Color
 	}
+	for _, hc := range domain.HomeDirCaches {
+		colorMap[hc.Category.Name] = hc.Category.Color
+	}
 	colorMap[domain.SnapOldRevisionsCategory] = domain.SnapOldRevisionsColor
 	colorMap[domain.SnapCacheCategory] = domain.SnapCacheColor
+	colorMap[domain.DockerOrphanVolumeCategory] = domain.DockerOrphanVolumeColor
+	colorMap[domain.DockerSystemPruneCategory] = domain.DockerSystemPruneColor
 	return colorMap
 }

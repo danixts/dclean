@@ -13,6 +13,7 @@ type FoundDir struct {
 	Size     int64
 	Category string
 	Target   string
+	Cmd      []string
 }
 
 type ScanPath struct {

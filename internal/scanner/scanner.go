@@ -51,6 +51,8 @@ func (ms *MultiScanner) Scan(onProgress func(int64)) error {
 		ms.scanSnapRevisions(onProgress)
 	}
 
+	ms.scanDocker()
+
 	return nil
 }
 
@@ -283,6 +285,17 @@ func BuildSources(activePaths []domain.ScanPath) ([]domain.ScanSource, string) {
 			Categories: domain.HomeCacheCategories,
 			Direct:     true,
 		})
+	}
+
+	for _, hc := range domain.HomeDirCaches {
+		root := filepath.Join(home, hc.Root)
+		if info, err := os.Stat(root); err == nil && info.IsDir() {
+			sources = append(sources, domain.ScanSource{
+				Root:       root,
+				Categories: []domain.Category{hc.Category},
+				Direct:     true,
+			})
+		}
 	}
 
 	return sources, snapDir

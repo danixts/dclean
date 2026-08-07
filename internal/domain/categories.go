@@ -70,19 +70,19 @@ var HomeCacheCategories = []Category{
 		Targets: []string{"puccinialin", "node-gyp", "node"},
 	},
 	{
-		Name:    "Browser Cache",
-		Color:   "#4285f4",
-		Targets: []string{"google-chrome", "mozilla", "BraveSoftware", "microsoft-edge"},
-	},
-	{
 		Name:    "Dev Tools Cache",
 		Color:   "#38bdf8",
 		Targets: []string{"typescript", "eslint", "prettier", "ms-playwright", "helm", "opencode"},
 	},
 	{
+		Name:    "AI Tools Cache",
+		Color:   "#d97757",
+		Targets: []string{"codebase-memory-mcp", "claude-cli-nodejs", "kimi-code"},
+	},
+	{
 		Name:    "System Cache",
 		Color:   "#888888",
-		Targets: []string{"thumbnails", "tracker3", "fontconfig"},
+		Targets: []string{"thumbnails", "tracker3", "fontconfig", "nvidia", "mesa_shader_cache"},
 	},
 }
 
@@ -95,6 +95,10 @@ var HomeDirCaches = []struct {
 	{".npm", Category{Name: "npm Cache", Color: "#cb3837", Targets: []string{"_cacache"}}},
 	{".bun/install", Category{Name: "Bun Cache", Color: "#fbf0df", Targets: []string{"cache"}}},
 	{".cargo/registry", Category{Name: "Cargo Registry", Color: "#dea584", Targets: []string{"cache", "src"}}},
+	{".local/share/pnpm", Category{Name: "pnpm Store", Color: "#f9ad00", Targets: []string{"store"}}},
+	{".local/share/pyppeteer", Category{Name: "Pyppeteer Chromium", Color: "#3776ab", Targets: []string{"local-chromium"}}},
+	{".local/share", Category{Name: "Trash", Color: "#9ca3af", Targets: []string{"Trash"}}},
+	{".gradle", Category{Name: "Gradle Cache", Color: "#02303a", Targets: []string{"caches", "daemon"}}},
 }
 
 const (

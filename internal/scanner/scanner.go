@@ -179,7 +179,21 @@ func (ms *MultiScanner) collectOldRevisions(appName, appPath, activeRevision str
 	}
 }
 
+// browser caches hold session data, wiping them logs the user out
+var browserSnaps = map[string]bool{
+	"brave":          true,
+	"firefox":        true,
+	"chromium":       true,
+	"opera":          true,
+	"vivaldi":        true,
+	"microsoft-edge": true,
+}
+
 func (ms *MultiScanner) collectSnapCache(appName, appPath string) {
+	if browserSnaps[appName] {
+		return
+	}
+
 	cachePath := filepath.Join(appPath, "common", ".cache")
 	info, err := os.Stat(cachePath)
 	if err != nil || !info.IsDir() {

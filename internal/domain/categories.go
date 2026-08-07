@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 var ProjectCategories = []Category{
 	{
 		Name:    "Node Modules",
@@ -107,6 +109,23 @@ const (
 	SnapCacheCategory        = "Snap Cache"
 	SnapCacheColor           = "#ff9933"
 	SnapCacheMinSize         = 1024 * 1024
+
+	SnapDisabledCategory  = "Snap Disabled Revisions"
+	SnapDisabledColor     = "#e95420"
+	AptCacheCategory      = "APT Package Cache"
+	AptCacheColor         = "#a80030"
+	AptAutoremoveCategory = "APT Orphaned Packages"
+	AptAutoremoveColor    = "#c94f5c"
+	JournalCategory       = "System Journal"
+	JournalColor          = "#7a5fa8"
+	StaleTempCategory     = "Stale Temp Files"
+	StaleTempColor        = "#6b7280"
+	CrashReportCategory   = "Crash Reports"
+	CrashReportColor      = "#b91c1c"
+
+	SystemMinSize   = 10 * 1024 * 1024
+	JournalKeepSize = 100 * 1024 * 1024
+	TempMaxAge      = 7 * 24 * time.Hour
 
 	DockerOrphanVolumeCategory = "Docker Orphan Volume"
 	DockerOrphanVolumeColor    = "#2496ed"

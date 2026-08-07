@@ -1,8 +1,13 @@
 # dclean
 
-TUI para limpiar directorios temporales, cache de desarrollo y revisiones viejas de snap en Linux.
+TUI para limpiar directorios temporales, cache de desarrollo y basura del sistema en Linux.
 
-Escanea multiples rutas configurables, agrupa los resultados por categoria, muestra el espacio ocupado y permite eliminar de forma selectiva o masiva. Persiste rutas e historial en SQLite.
+Escanea multiples rutas configurables, caches de herramientas, Docker y basura del sistema
+(revisiones viejas de snap, cache de APT, journal, temporales rancios, crash dumps), agrupa
+los resultados por categoria, muestra el espacio ocupado y permite eliminar de forma
+selectiva o masiva. Persiste rutas e historial en SQLite.
+
+Nunca toca caches ni perfiles de navegador.
 
 ```
 > [x] ▾ Go Build Cache     10.3 GB  (4 dirs)
@@ -145,17 +150,66 @@ Deletion history by category:
 |-----------|-------------|
 | Go Build Cache | `go-build`, `gopls`, `goimports`, `golangci-lint` |
 | IDE Cache | `JetBrains`, `cursor-compile-cache` |
-| Package Manager Cache | `pip`, `pnpm`, `yarn`, `uv`, `npm`, `turbo` |
-| Browser Cache | `google-chrome`, `mozilla`, `BraveSoftware`, `microsoft-edge` |
+| Package Manager Cache | `pip`, `pnpm`, `yarn`, `uv`, `npm`, `turbo`, `pre-commit`, `virtualenv` |
 | Dev Tools Cache | `typescript`, `eslint`, `prettier`, `ms-playwright`, `helm`, `opencode` |
-| System Cache | `thumbnails`, `tracker3`, `fontconfig` |
+| AI Tools Cache | `codebase-memory-mcp`, `claude-cli-nodejs`, `kimi-code` |
+| System Cache | `thumbnails`, `tracker3`, `fontconfig`, `nvidia`, `mesa_shader_cache` |
+
+Los caches de navegador quedan explicitamente fuera del scan: guardan datos de sesion y borrarlos cierra tus sesiones.
+
+### Caches por herramienta (fuera de `~/.cache`)
+
+| Categoria | Ruta |
+|-----------|------|
+| Go Module Cache | `~/go/pkg/mod` |
+| Maven Repository | `~/.m2/repository` |
+| npm Cache | `~/.npm/_cacache` |
+| Bun Cache | `~/.bun/install/cache` |
+| Cargo Registry | `~/.cargo/registry` |
+| pnpm Store | `~/.local/share/pnpm/store` |
+| Gradle Cache | `~/.gradle/caches`, `~/.gradle/daemon` |
+| Pyppeteer Chromium | `~/.local/share/pyppeteer/local-chromium` |
+| Trash | `~/.local/share/Trash` |
 
 ### Snap (`~/snap`)
 
 | Categoria | Deteccion |
 |-----------|-----------|
 | Snap Old Revisions | Revisiones numeradas que no son la activa (symlink `current`) |
-| Snap Cache | `~/snap/<app>/common/.cache` mayores a 1 MB |
+| Snap Cache | `~/snap/<app>/common/.cache` mayores a 1 MB (navegadores excluidos) |
+
+### Basura del sistema
+
+Requiere privilegios: se ejecuta via `sudo -n`, sin prompt interactivo. Si no hay sudo sin
+contrasena disponible, los items aparecen en el scan pero fallan al eliminarse. Ver
+[Permisos de sistema](#permisos-de-sistema).
+
+| Categoria | Deteccion | Accion |
+|-----------|-----------|--------|
+| Snap Disabled Revisions | Revisiones viejas en `/var/lib/snapd/snaps` que snapd conserva tras cada update | `snap remove --revision` |
+| APT Package Cache | `.deb` descargados en `/var/cache/apt/archives` | `apt-get clean` |
+| APT Orphaned Packages | Paquetes huerfanos, kernels viejos incluidos | `apt-get -y autoremove --purge` |
+| System Journal | Logs de systemd por encima de 100 MB | `journalctl --vacuum-size=100M` |
+| Stale Temp Files | Entradas de `/tmp` y `/var/tmp` propias sin tocar hace 7+ dias | borrado directo |
+| Crash Reports | `/var/crash` y `/var/lib/systemd/coredump` | borrado directo |
+
+Se ignoran los sockets y directorios de sesion (`.X11-unix`, `systemd-private-*`,
+`snap-private-tmp`, etc), y solo se toca lo que pertenece a tu usuario.
+
+## Permisos de sistema
+
+Para que dclean limpie la basura del sistema sin pedir contrasena, autorizá solo esos
+comandos en sudoers:
+
+```bash
+sudo tee /etc/sudoers.d/dclean > /dev/null <<'EOF'
+%sudo ALL=(root) NOPASSWD: /usr/bin/apt-get clean, /usr/bin/apt-get -y autoremove --purge, /usr/bin/journalctl --vacuum-size=100M, /usr/bin/snap remove --revision *
+EOF
+sudo chmod 0440 /etc/sudoers.d/dclean
+sudo visudo -c
+```
+
+Alternativa sin sudoers: `sudo dclean`.
 
 ## Estructura del proyecto
 
@@ -169,7 +223,9 @@ dclean/
 │   │   ├── categories.go        # Definicion de categorias y targets
 │   │   └── format.go            # FormatSize (bytes a human-readable)
 │   ├── scanner/
-│   │   └── scanner.go           # MultiScanner: recursivo, directo, snap
+│   │   ├── scanner.go           # MultiScanner: recursivo, directo, snap
+│   │   ├── docker.go            # Volumenes huerfanos y system prune
+│   │   └── system.go            # Basura del sistema: snap, apt, journal, tmp, crashes
 │   ├── store/
 │   │   └── store.go             # SQLite: rutas, historial, migraciones
 │   └── tui/

@@ -449,5 +449,11 @@ func buildColorMap() map[string]string {
 	colorMap[domain.SnapCacheCategory] = domain.SnapCacheColor
 	colorMap[domain.DockerOrphanVolumeCategory] = domain.DockerOrphanVolumeColor
 	colorMap[domain.DockerSystemPruneCategory] = domain.DockerSystemPruneColor
+	colorMap[domain.SnapDisabledCategory] = domain.SnapDisabledColor
+	colorMap[domain.AptCacheCategory] = domain.AptCacheColor
+	colorMap[domain.AptAutoremoveCategory] = domain.AptAutoremoveColor
+	colorMap[domain.JournalCategory] = domain.JournalColor
+	colorMap[domain.StaleTempCategory] = domain.StaleTempColor
+	colorMap[domain.CrashReportCategory] = domain.CrashReportColor
 	return colorMap
 }

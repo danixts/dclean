@@ -52,6 +52,7 @@ func (ms *MultiScanner) Scan(onProgress func(int64)) error {
 	}
 
 	ms.scanDocker()
+	ms.scanSystem()
 
 	return nil
 }

@@ -4,11 +4,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
 
 	"dclean/internal/domain"
+
+	"golang.org/x/sync/errgroup"
 )
+
+// maxSizeWorkers bounds how many calculateDirSize calls run at once. It is
+// I/O-bound work (walking + stat-ing every file), so a small multiple of
+// GOMAXPROCS overlaps disk waits without flooding the OS with goroutines.
+const maxSizeWorkers = 8
 
 type Result struct {
 	Items       []domain.FoundDir
@@ -38,7 +46,10 @@ func New(sources []domain.ScanSource, snapDir string) *MultiScanner {
 	}
 }
 
-func (ms *MultiScanner) Scan(onProgress func(int64)) error {
+// Scan walks every source and populates ms.Result. Individual source
+// failures (a missing dir, a command not installed) are skipped silently
+// by the per-source scanners, so this never fails as a whole.
+func (ms *MultiScanner) Scan(onProgress func(int64)) {
 	for _, source := range ms.sources {
 		if source.Direct {
 			ms.scanDirectChildren(source, onProgress)
@@ -53,8 +64,15 @@ func (ms *MultiScanner) Scan(onProgress func(int64)) error {
 
 	ms.scanDocker()
 	ms.scanSystem()
+}
 
-	return nil
+// sizeCandidate is a matched directory whose size still needs to be
+// calculated; separating discovery from sizing lets the (cheap) walk stay
+// serial while the (expensive) size calculation runs concurrently.
+type sizeCandidate struct {
+	path     string
+	category string
+	target   string
 }
 
 func (ms *MultiScanner) scanDirectChildren(source domain.ScanSource, onProgress func(int64)) {
@@ -65,6 +83,7 @@ func (ms *MultiScanner) scanDirectChildren(source domain.ScanSource, onProgress 
 		return
 	}
 
+	var candidates []sizeCandidate
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -78,22 +97,20 @@ func (ms *MultiScanner) scanDirectChildren(source domain.ScanSource, onProgress 
 			continue
 		}
 
-		entryPath := filepath.Join(source.Root, entry.Name())
-		entrySize := calculateDirSize(entryPath)
-		if entrySize > 0 {
-			ms.Result.add(domain.FoundDir{
-				Path:     entryPath,
-				Size:     entrySize,
-				Category: match.category,
-				Target:   match.target,
-			})
-		}
+		candidates = append(candidates, sizeCandidate{
+			path:     filepath.Join(source.Root, entry.Name()),
+			category: match.category,
+			target:   match.target,
+		})
 	}
+
+	ms.resolveSizes(candidates)
 }
 
 func (ms *MultiScanner) scanRecursive(source domain.ScanSource, onProgress func(int64)) {
 	targetLookup := buildTargetLookup(source.Categories)
 
+	var candidates []sizeCandidate
 	_ = filepath.WalkDir(source.Root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -116,17 +133,38 @@ func (ms *MultiScanner) scanRecursive(source domain.ScanSource, onProgress func(
 			return nil
 		}
 
-		entrySize := calculateDirSize(path)
-		if entrySize > 0 {
-			ms.Result.add(domain.FoundDir{
-				Path:     path,
-				Size:     entrySize,
-				Category: match.category,
-				Target:   match.target,
-			})
-		}
+		candidates = append(candidates, sizeCandidate{path: path, category: match.category, target: match.target})
 		return filepath.SkipDir
 	})
+
+	ms.resolveSizes(candidates)
+}
+
+// resolveSizes calculates the size of every candidate concurrently, bounded
+// by maxSizeWorkers, and adds the non-empty ones to the result.
+func (ms *MultiScanner) resolveSizes(candidates []sizeCandidate) {
+	if len(candidates) == 0 {
+		return
+	}
+
+	var g errgroup.Group
+	g.SetLimit(min(maxSizeWorkers, runtime.GOMAXPROCS(0)*2))
+
+	for _, c := range candidates {
+		g.Go(func() error {
+			size := calculateDirSize(c.path)
+			if size > 0 {
+				ms.Result.add(domain.FoundDir{
+					Path:     c.path,
+					Size:     size,
+					Category: c.category,
+					Target:   c.target,
+				})
+			}
+			return nil
+		})
+	}
+	_ = g.Wait()
 }
 
 func (ms *MultiScanner) scanSnapRevisions(onProgress func(int64)) {

@@ -7,6 +7,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/mattn/go-sqlite3 v1.14.37
+	golang.org/x/sync v0.22.0
 )
 
 require (

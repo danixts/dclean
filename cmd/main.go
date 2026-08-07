@@ -39,22 +39,34 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error opening database: %v\n", err)
 		os.Exit(1)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+		}
+	}()
 
 	if !db.HasPaths() {
-		db.SeedDefaults()
+		if err := db.SeedDefaults(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error seeding default paths: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
-	commands := map[bool]func(){
-		addPath != "":      func() { cmdAddPath(db, addPath) },
-		removePath != "":   func() { cmdRemovePath(db, removePath) },
-		showPaths:          func() { cmdShowPaths(db) },
-		showHistory:        func() { cmdShowHistory(db) },
-		listMode || dryRun: func() { cmdList(db, dryRun) },
-	}
-
-	if cmd, exists := commands[true]; exists {
-		cmd()
+	switch {
+	case addPath != "":
+		cmdAddPath(db, addPath)
+		return
+	case removePath != "":
+		cmdRemovePath(db, removePath)
+		return
+	case showPaths:
+		cmdShowPaths(db)
+		return
+	case showHistory:
+		cmdShowHistory(db)
+		return
+	case listMode || dryRun:
+		cmdList(db, dryRun)
 		return
 	}
 
@@ -86,10 +98,17 @@ func cmdAddPath(db *store.Store, path string) {
 }
 
 func cmdRemovePath(db *store.Store, path string) {
-	paths, _ := db.ListPaths()
+	paths, err := db.ListPaths()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 	for _, p := range paths {
 		if p.Path == path {
-			db.RemovePath(p.ID)
+			if err := db.RemovePath(p.ID); err != nil {
+				fmt.Fprintf(os.Stderr, "Error removing path: %v\n", err)
+				os.Exit(1)
+			}
 			fmt.Printf("Removed: %s\n", path)
 			return
 		}
@@ -154,7 +173,7 @@ func cmdList(db *store.Store, dryRun bool) {
 
 	sources, snapDir := scanner.BuildSources(activePaths)
 	sc := scanner.New(sources, snapDir)
-	_ = sc.Scan(func(scanned int64) {
+	sc.Scan(func(scanned int64) {
 		fmt.Printf("\r  Scanned %d directories...", scanned)
 	})
 	fmt.Println()

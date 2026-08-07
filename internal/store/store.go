@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"time"
@@ -28,15 +29,14 @@ func New() (*Store, error) {
 
 	s := &Store{db: db}
 	if err := s.migrate(); err != nil {
-		db.Close()
-		return nil, err
+		return nil, errors.Join(err, db.Close())
 	}
 
 	return s, nil
 }
 
-func (s *Store) Close() {
-	s.db.Close()
+func (s *Store) Close() error {
+	return s.db.Close()
 }
 
 func (s *Store) migrate() error {
@@ -96,7 +96,7 @@ func (s *Store) queryPaths(query string) ([]domain.ScanPath, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var paths []domain.ScanPath
 	for rows.Next() {
@@ -113,7 +113,9 @@ func (s *Store) queryPaths(query string) ([]domain.ScanPath, error) {
 
 func (s *Store) HasPaths() bool {
 	var count int
-	s.db.QueryRow(`SELECT COUNT(*) FROM scan_paths`).Scan(&count)
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM scan_paths`).Scan(&count); err != nil {
+		return false
+	}
 	return count > 0
 }
 
@@ -132,7 +134,8 @@ func (s *Store) SeedDefaults() error {
 
 	for _, c := range candidates {
 		if info, err := os.Stat(c.path); err == nil && info.IsDir() {
-			s.AddPath(c.path, c.label)
+			// best-effort: a failed seed entry should not block the others
+			_ = s.AddPath(c.path, c.label)
 		}
 	}
 
@@ -157,7 +160,7 @@ func (s *Store) DeletionSummaries() ([]domain.DeletionSummary, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var summaries []domain.DeletionSummary
 	for rows.Next() {

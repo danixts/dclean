@@ -94,7 +94,7 @@ func (m Model) scanCmd() tea.Cmd {
 	return func() tea.Msg {
 		sources, snapDir := scanner.BuildSources(paths)
 		sc := scanner.New(sources, snapDir)
-		_ = sc.Scan(nil)
+		sc.Scan(nil)
 		return ScanDoneMsg{Result: sc.Result}
 	}
 }
@@ -125,11 +125,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.FreedSize = msg.Freed
 		m.Errors = msg.Errors
 		for _, item := range msg.Deleted {
-			m.Store.RecordDeletion(domain.DeletionRecord{
+			// the item is already gone from disk; a history-write failure is
+			// reported alongside deletion errors but never rolls the delete back
+			if err := m.Store.RecordDeletion(domain.DeletionRecord{
 				Path:      item.Path,
 				Category:  item.Category,
 				SizeBytes: item.Size,
-			})
+			}); err != nil {
+				m.Errors = append(m.Errors, fmt.Sprintf("history: %s: %v", item.Path, err))
+			}
 		}
 		return m, nil
 
@@ -227,11 +231,17 @@ func (m Model) handlePathsKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
 		"down": func() tea.Cmd { m.movePathCursor(1); return nil },
 		"j":    func() tea.Cmd { m.movePathCursor(1); return nil },
 		" ": func() tea.Cmd {
-			m.Store.TogglePath(m.AllPaths[m.PathCursor].ID)
+			if err := m.Store.TogglePath(m.AllPaths[m.PathCursor].ID); err != nil {
+				m.PathError = fmt.Sprintf("toggle failed: %v", err)
+				return nil
+			}
 			return m.loadPathsCmd()
 		},
 		"x": func() tea.Cmd {
-			m.Store.RemovePath(m.AllPaths[m.PathCursor].ID)
+			if err := m.Store.RemovePath(m.AllPaths[m.PathCursor].ID); err != nil {
+				m.PathError = fmt.Sprintf("remove failed: %v", err)
+				return nil
+			}
 			return m.loadPathsCmd()
 		},
 	}
@@ -272,7 +282,10 @@ func (m Model) handlePathInput(msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m, nil
 		}
 
-		m.Store.AddPath(absPath, filepath.Base(absPath))
+		if err := m.Store.AddPath(absPath, filepath.Base(absPath)); err != nil {
+			m.PathError = fmt.Sprintf("add failed: %v", err)
+			return m, nil
+		}
 		m.PathInputActive = false
 		m.PathError = ""
 		return m, m.loadPathsCmd()
@@ -340,31 +353,7 @@ func (m Model) handleConfirmKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if key == "y" || key == "Y" {
 		m.Mode = ModeDeleting
 		groups := m.Groups
-		return m, func() tea.Msg {
-			var freed int64
-			var errors []string
-			var deleted []domain.FoundDir
-			for _, group := range groups {
-				if !group.Selected {
-					continue
-				}
-				for _, item := range group.Items {
-					var err error
-					if len(item.Cmd) > 0 {
-						err = exec.Command(item.Cmd[0], item.Cmd[1:]...).Run()
-					} else {
-						err = os.RemoveAll(item.Path)
-					}
-					if err != nil {
-						errors = append(errors, fmt.Sprintf("%s: %v", item.Path, err))
-					} else {
-						freed += item.Size
-						deleted = append(deleted, item)
-					}
-				}
-			}
-			return DeleteDoneMsg{Freed: freed, Errors: errors, Deleted: deleted}
-		}
+		return m, func() tea.Msg { return deleteGroups(groups) }
 	}
 
 	cancelKeys := map[string]bool{"n": true, "N": true, "esc": true, "q": true}
@@ -373,6 +362,37 @@ func (m Model) handleConfirmKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// deleteGroups runs the actual removal for every selected item and reports
+// what was freed, so the caller (a tea.Cmd) stays a thin one-liner.
+func deleteGroups(groups []GroupedItem) DeleteDoneMsg {
+	var freed int64
+	var errs []string
+	var deleted []domain.FoundDir
+
+	for _, group := range groups {
+		if !group.Selected {
+			continue
+		}
+		for _, item := range group.Items {
+			if err := deleteItem(item); err != nil {
+				errs = append(errs, fmt.Sprintf("%s: %v", item.Path, err))
+				continue
+			}
+			freed += item.Size
+			deleted = append(deleted, item)
+		}
+	}
+
+	return DeleteDoneMsg{Freed: freed, Errors: errs, Deleted: deleted}
+}
+
+func deleteItem(item domain.FoundDir) error {
+	if len(item.Cmd) > 0 {
+		return exec.Command(item.Cmd[0], item.Cmd[1:]...).Run()
+	}
+	return os.RemoveAll(item.Path)
 }
 
 func (m Model) SelectedStats() (int, int64) {

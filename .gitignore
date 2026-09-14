@@ -12,3 +12,4 @@ dclean
 *.swo
 *~
 .DS_Store
+.atl/

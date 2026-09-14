@@ -1,0 +1,11 @@
+# Installed by `make install` as /etc/sudoers.d/dclean.
+# Each entry mirrors exactly one rootCmd() in internal/scanner/system.go.
+# Paths are literal on purpose: a wildcard on find would be a root-level rm.
+Cmnd_Alias DCLEAN_CLEAN = /usr/bin/journalctl --vacuum-size=100M, \
+                          /usr/bin/apt-get clean, \
+                          /usr/bin/apt-get -y autoremove --purge, \
+                          /usr/bin/snap remove --revision [0-9]* [a-z0-9.-]*, \
+                          /usr/bin/find /var/crash -mindepth 1 -delete, \
+                          /usr/bin/find /var/lib/systemd/coredump -mindepth 1 -delete
+
+@USER@ ALL=(root) NOPASSWD: DCLEAN_CLEAN

@@ -22,46 +22,6 @@ func (ms *MultiScanner) scanSystem() {
 	ms.scanCrashReports()
 }
 
-// snapd keeps the previous revisions of every app after an update
-func (ms *MultiScanner) scanDisabledSnaps() {
-	out, err := exec.Command("snap", "list", "--all").Output()
-	if err != nil {
-		return
-	}
-
-	skippedHeader := false
-	for line := range strings.SplitSeq(string(out), "\n") {
-		if !skippedHeader {
-			skippedHeader = true
-			continue
-		}
-
-		fields := strings.Fields(line)
-		if len(fields) < 6 || !isDisabledSnap(fields[len(fields)-1]) {
-			continue
-		}
-
-		name, revision := fields[0], fields[2]
-		// removing a revision also deletes ~/snap/<name>/<rev>, the profile copy
-		if browserSnaps[name] {
-			continue
-		}
-		snapFile := filepath.Join("/var/lib/snapd/snaps", fmt.Sprintf("%s_%s.snap", name, revision))
-		info, err := os.Stat(snapFile)
-		if err != nil {
-			continue
-		}
-
-		ms.Result.add(domain.FoundDir{
-			Path:     snapFile,
-			Size:     info.Size(),
-			Category: domain.SnapDisabledCategory,
-			Target:   fmt.Sprintf("%s (rev %s)", name, revision),
-			Cmd:      rootCmd("snap", "remove", "--revision", revision, name),
-		})
-	}
-}
-
 func (ms *MultiScanner) scanAptCache() {
 	if _, err := exec.LookPath("apt-get"); err != nil {
 		return
@@ -81,7 +41,6 @@ func (ms *MultiScanner) scanAptCache() {
 	})
 }
 
-// packages kept only as dependencies of something already removed, old kernels included
 func (ms *MultiScanner) scanAptAutoremove() {
 	if _, err := exec.LookPath("apt-get"); err != nil {
 		return
@@ -134,7 +93,6 @@ func (ms *MultiScanner) scanJournal() {
 	})
 }
 
-// leftovers from crashed or long-gone processes; anything recent stays
 func (ms *MultiScanner) scanStaleTemp() {
 	cutoff := time.Now().Add(-domain.TempMaxAge)
 
@@ -196,16 +154,6 @@ func rootCmd(name string, args ...string) []string {
 	return append([]string{"sudo", "-n"}, cmd...)
 }
 
-// notes is a comma-separated list like "core,desactivado" or "desactivado,classic"
-func isDisabledSnap(notes string) bool {
-	for note := range strings.SplitSeq(notes, ",") {
-		if note == "disabled" || note == "desactivado" {
-			return true
-		}
-	}
-	return false
-}
-
 var protectedTemp = []string{".X11-unix", ".XIM-unix", ".ICE-unix", ".font-unix", ".Test-unix", "systemd-private-", "snap-private-tmp", "snap.", ".org.chromium", "dclean"}
 
 func isProtectedTemp(name string) bool {
@@ -242,7 +190,6 @@ func installedSize(packages []string) int64 {
 
 var journalUnits = map[byte]int64{'K': 1 << 10, 'M': 1 << 20, 'G': 1 << 30, 'T': 1 << 40}
 
-// journalctl reports like "take up 91.8M in the file system"
 func parseJournalUsage(out string) int64 {
 	for field := range strings.FieldsSeq(out) {
 		if len(field) < 2 {

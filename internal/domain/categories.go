@@ -101,7 +101,6 @@ var HomeDirCaches = []struct {
 	{".local/share/pyppeteer", Category{Name: "Pyppeteer Chromium", Color: "#3776ab", Targets: []string{"local-chromium"}}},
 	{".local/share", Category{Name: "Trash", Color: "#9ca3af", Targets: []string{"Trash"}}},
 	{".gradle", Category{Name: "Gradle Cache", Color: "#02303a", Targets: []string{"caches", "daemon"}}},
-	// codex leaves one ~60 MB marketplace-upgrade copy here per run
 	{".codex/.tmp/marketplaces", Category{Name: "Codex Staging", Color: "#10a37f", Targets: []string{".staging"}}},
 }
 

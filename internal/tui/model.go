@@ -125,8 +125,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.FreedSize = msg.Freed
 		m.Errors = msg.Errors
 		for _, item := range msg.Deleted {
-			// the item is already gone from disk; a history-write failure is
-			// reported alongside deletion errors but never rolls the delete back
 			if err := m.Store.RecordDeletion(domain.DeletionRecord{
 				Path:      item.Path,
 				Category:  item.Category,
@@ -364,8 +362,6 @@ func (m Model) handleConfirmKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-// deleteGroups runs the actual removal for every selected item and reports
-// what was freed, so the caller (a tea.Cmd) stays a thin one-liner.
 func deleteGroups(groups []GroupedItem) DeleteDoneMsg {
 	var freed int64
 	var errs []string

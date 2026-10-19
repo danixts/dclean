@@ -134,7 +134,6 @@ func (s *Store) SeedDefaults() error {
 
 	for _, c := range candidates {
 		if info, err := os.Stat(c.path); err == nil && info.IsDir() {
-			// best-effort: a failed seed entry should not block the others
 			_ = s.AddPath(c.path, c.label)
 		}
 	}

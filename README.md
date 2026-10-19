@@ -169,6 +169,7 @@ Los caches de navegador quedan explicitamente fuera del scan: guardan datos de s
 | Gradle Cache | `~/.gradle/caches`, `~/.gradle/daemon` |
 | Pyppeteer Chromium | `~/.local/share/pyppeteer/local-chromium` |
 | Trash | `~/.local/share/Trash` |
+| Codex Staging | `~/.codex/.tmp/marketplaces/.staging` |
 
 ### Snap (`~/snap`)
 

@@ -1,7 +1,6 @@
 package scanner
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -59,7 +58,7 @@ func (ms *MultiScanner) Scan(onProgress func(int64)) {
 	}
 
 	if ms.snapDir != "" {
-		ms.scanSnapRevisions(onProgress)
+		ms.scanSnapCaches()
 	}
 
 	ms.scanDocker()
@@ -167,53 +166,17 @@ func (ms *MultiScanner) resolveSizes(candidates []sizeCandidate) {
 	_ = g.Wait()
 }
 
-func (ms *MultiScanner) scanSnapRevisions(onProgress func(int64)) {
+// numbered revision dirs under ~/snap/<app> are full user profiles, not
+// cache, so only common/.cache is ever offered
+func (ms *MultiScanner) scanSnapCaches() {
 	apps, err := os.ReadDir(ms.snapDir)
 	if err != nil {
 		return
 	}
 
 	for _, app := range apps {
-		if !app.IsDir() {
-			continue
-		}
-
-		appPath := filepath.Join(ms.snapDir, app.Name())
-		activeRevision := readCurrentRevision(appPath)
-		if activeRevision == "" {
-			continue
-		}
-
-		ms.collectOldRevisions(app.Name(), appPath, activeRevision, onProgress)
-		ms.collectSnapCache(app.Name(), appPath)
-	}
-}
-
-func (ms *MultiScanner) collectOldRevisions(appName, appPath, activeRevision string, onProgress func(int64)) {
-	entries, err := os.ReadDir(appPath)
-	if err != nil {
-		return
-	}
-
-	skipDirs := map[string]bool{"common": true, "current": true, activeRevision: true}
-
-	for _, entry := range entries {
-		if !entry.IsDir() || skipDirs[entry.Name()] || !isNumericString(entry.Name()) {
-			continue
-		}
-
-		ms.Result.ScannedDirs.Add(1)
-		ms.notifyProgress(onProgress)
-
-		revisionPath := filepath.Join(appPath, entry.Name())
-		revisionSize := calculateDirSize(revisionPath)
-		if revisionSize > 0 {
-			ms.Result.add(domain.FoundDir{
-				Path:     revisionPath,
-				Size:     revisionSize,
-				Category: domain.SnapOldRevisionsCategory,
-				Target:   fmt.Sprintf("%s (rev %s, active: %s)", appName, entry.Name(), activeRevision),
-			})
+		if app.IsDir() {
+			ms.collectSnapCache(app.Name(), filepath.Join(ms.snapDir, app.Name()))
 		}
 	}
 }
@@ -279,26 +242,6 @@ var versionControlDirs = map[string]bool{
 
 func isVersionControlDir(name string) bool {
 	return versionControlDirs[name]
-}
-
-func readCurrentRevision(appPath string) string {
-	target, err := os.Readlink(filepath.Join(appPath, "current"))
-	if err != nil {
-		return ""
-	}
-	return target
-}
-
-func isNumericString(s string) bool {
-	if len(s) == 0 {
-		return false
-	}
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return false
-		}
-	}
-	return true
 }
 
 func calculateDirSize(path string) int64 {

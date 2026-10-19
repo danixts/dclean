@@ -465,7 +465,6 @@ func buildColorMap() map[string]string {
 	for _, hc := range domain.HomeDirCaches {
 		colorMap[hc.Category.Name] = hc.Category.Color
 	}
-	colorMap[domain.SnapOldRevisionsCategory] = domain.SnapOldRevisionsColor
 	colorMap[domain.SnapCacheCategory] = domain.SnapCacheColor
 	colorMap[domain.DockerOrphanVolumeCategory] = domain.DockerOrphanVolumeColor
 	colorMap[domain.DockerSystemPruneCategory] = domain.DockerSystemPruneColor

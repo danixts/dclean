@@ -104,11 +104,9 @@ var HomeDirCaches = []struct {
 }
 
 const (
-	SnapOldRevisionsCategory = "Snap Old Revisions"
-	SnapOldRevisionsColor    = "#ff6600"
-	SnapCacheCategory        = "Snap Cache"
-	SnapCacheColor           = "#ff9933"
-	SnapCacheMinSize         = 1024 * 1024
+	SnapCacheCategory = "Snap Cache"
+	SnapCacheColor    = "#ff9933"
+	SnapCacheMinSize  = 1024 * 1024
 
 	SnapDisabledCategory  = "Snap Disabled Revisions"
 	SnapDisabledColor     = "#e95420"

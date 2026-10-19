@@ -42,6 +42,10 @@ func (ms *MultiScanner) scanDisabledSnaps() {
 		}
 
 		name, revision := fields[0], fields[2]
+		// removing a revision also deletes ~/snap/<name>/<rev>, the profile copy
+		if browserSnaps[name] {
+			continue
+		}
 		snapFile := filepath.Join("/var/lib/snapd/snaps", fmt.Sprintf("%s_%s.snap", name, revision))
 		info, err := os.Stat(snapFile)
 		if err != nil {

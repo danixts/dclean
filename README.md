@@ -14,8 +14,7 @@ Nunca toca caches ni perfiles de navegador.
         /home/user/.cache/go-build   9.9 GB
         /home/user/.cache/goimports  283.2 MB
   [ ] ▸ Snap Cache           4.3 GB  (6 dirs)
-  [ ] ▸ Snap Old Revisions   3.9 GB  (2 dirs)
-  [ ] ▸ IDE Cache            2.5 GB  (1 dirs)
+    [ ] ▸ IDE Cache            2.5 GB  (1 dirs)
   [ ] ▸ Package Manager      1.5 GB  (3 dirs)
 
   Selected: 10.3 GB (4 dirs)
@@ -175,8 +174,10 @@ Los caches de navegador quedan explicitamente fuera del scan: guardan datos de s
 
 | Categoria | Deteccion |
 |-----------|-----------|
-| Snap Old Revisions | Revisiones numeradas que no son la activa (symlink `current`) |
 | Snap Cache | `~/snap/<app>/common/.cache` mayores a 1 MB (navegadores excluidos) |
+
+Las carpetas `~/snap/<app>/<rev>` nunca se tocan: contienen el perfil completo de la app
+(credenciales, cookies, sesiones).
 
 ### Basura del sistema
 
@@ -186,7 +187,7 @@ contrasena disponible, los items aparecen en el scan pero fallan al eliminarse. 
 
 | Categoria | Deteccion | Accion |
 |-----------|-----------|--------|
-| Snap Disabled Revisions | Revisiones viejas en `/var/lib/snapd/snaps` que snapd conserva tras cada update | `snap remove --revision` |
+| Snap Disabled Revisions | Revisiones viejas en `/var/lib/snapd/snaps` que snapd conserva tras cada update (navegadores excluidos) | `snap remove --revision` |
 | APT Package Cache | `.deb` descargados en `/var/cache/apt/archives` | `apt-get clean` |
 | APT Orphaned Packages | Paquetes huerfanos, kernels viejos incluidos | `apt-get -y autoremove --purge` |
 | System Journal | Logs de systemd por encima de 100 MB | `journalctl --vacuum-size=100M` |
